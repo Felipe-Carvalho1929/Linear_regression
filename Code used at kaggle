@@ -1,0 +1,84 @@
+-Example of How to make linear regression
+Using the dataset of kaggle: https://www.kaggle.com/code/felipepinguim/car-name-regression
+Libraries
+import pandas as pd
+df = pd.read_csv('/kaggle/input/car-price-prediction/CarPrice_Assignment.csv')
+import statsmodels.formula.api as smf
+import statsmodels.stats.api as sms
+import scipy.stats as stats
+import matplotlib.pyplot as plt
+import statsmodels
+from statsmodels.tools.sm_exceptions import ValueWarning
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from statsmodels.tools.tools import add_constant
+
+To read the data:
+df.head()
+
+In this point we must choose the dependent variable
+modelo1 = smf.ols('enginesize ~ boreratio + stroke', data = df).fit()
+
+Resid function
+residuos = modelo1.resid
+residuos
+
+Realizar os testes:
+estatistica, p = stats.shapiro(residuos)
+print('Estatística de teste: {}'.format(estatistica))
+print('p-valor: {}'.format(p))
+
+#Ho = distribuição normal : p > 0.05
+#Ha = distribuição != normal : p <= 0.05
+
+stats.probplot(residuos, dist="norm", plot=plt)
+plt.title("Normal Q-Q plot - Resíduos")
+plt.show()
+
+#Análise da Homoscedasticidade
+
+Primeiro fazendo uma análise gráfico, em seguida realizando o teste empirico
+plt.scatter(y=residuos, x=modelo1.predict(), color='red')
+plt.hlines(y=0, xmin=0.1, xmax=1000, color='orange')
+plt.ylabel('Resíduos')
+plt.xlabel('Valores Preditos')
+plt.show()
+
+#Ho = existe homocedasticidade : p > 0.05
+
+#Ha = não existe homocedasticidade : p <= 0.05
+
+from statsmodels.compat import lzip
+estatistica, p, f, fp = sms.het_breuschpagan (modelo1.resid, modelo1.model.exog)
+print('Estatística de teste: {}'.format(estatistica))
+print('p-valor: {}'.format(p))
+print('f-valor: {}'.format(f))
+print('f_p-valor: {}'.format(fp))
+
+Analisando outlier
+#Existe Outlier (tem que estar entre 3 e - 3)
+outliers = modelo1.outlier_test()
+outliers.max()
+
+outliers.min()
+
+Teste de Durbin Watson
+estatistica = statsmodels.stats.stattools.durbin_watson(modelo1.resid)
+print('Estatística de teste: {}'.format(estatistica))
+
+#Teste de multicoliearidade
+variaveis = df[['boreratio', 'stroke']]
+variaveis.head()
+
+correlacoes = variaveis.corr(method='pearson')
+correlacoes
+
+#Usando Fator de Inflação de Variância (VIF)
+vif = add_constant(variaveis) # função espera a presença de uma constante na matriz de variáveis ​​explicativas
+pd.Series([variance_inflation_factor(vif.values, j) for j in range(vif.shape[1])], index=vif.columns)
+
+print(modelo1.summary())
+Análise preditiva
+# Criando uma coluna com previsão
+df['previsao'] = modelo1.fittedvalues
+
+df.head(10)
